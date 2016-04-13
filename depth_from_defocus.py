@@ -56,11 +56,14 @@ def joint_bilateral_filter(sdm, im, spatial_domain, sr):
         sdm = np.expand_dims(sdm, 2)
     padded_sdm = np.pad(sdm, padn, mode='edge')
     patch_sdm = rolling_window(padded_sdm, (wr, wr))
+    patch_sdm = patch_sdm.reshape((patch_sdm.shape[0], patch_sdm.shape[1], patch_sdm.shape[3], patch_sdm.shape[4]))
     patch_im = rolling_window(padded_im, (wr, wr))
 
     p = ((0,0),(0,0),(0,0),(wr-1,0),(wr-1,0))
-    #tmp = np.exp(-(patch_im - np.pad(im[:,:,:,np.newaxis,np.newaxis], p, mode='reflect'))**2 / (2 * sr**2)).sum()
-    tmp = np.pad(im[:,:,:,np.newaxis,np.newaxis], p, mode='reflect')
+    patch_im_x = np.pad(im[:,:,:,np.newaxis,np.newaxis], p, mode='reflect')
+    g_im = np.exp(-(patch_im - patch_im_x)**2 / (2 * sr**2)).sum(axis=2)
+    g_sdm = np.exp(-patch_sdm) * filters.gaussian_filter(np.ones((wr, wr)), spatial_domain)
+    t = g_im * g_sdm
 
 # load image as grey
 fname = './lena.tiff'
