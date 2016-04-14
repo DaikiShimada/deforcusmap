@@ -51,19 +51,25 @@ def joint_bilateral_filter(sdm, im, spatial_domain, sr):
     padding = (wr - 1) / 2
     padn = ((padding, padding), (padding, padding), (0, 0))
     padded_im = np.pad(im, padn, mode='edge')
+    patch_im = rolling_window(padded_im, (wr, wr))
 
     if sdm.ndim==2:
         sdm = np.expand_dims(sdm, 2)
     padded_sdm = np.pad(sdm, padn, mode='edge')
     patch_sdm = rolling_window(padded_sdm, (wr, wr))
     patch_sdm = patch_sdm.reshape((patch_sdm.shape[0], patch_sdm.shape[1], patch_sdm.shape[3], patch_sdm.shape[4]))
-    patch_im = rolling_window(padded_im, (wr, wr))
+
 
     p = ((0,0),(0,0),(0,0),(wr-1,0),(wr-1,0))
     patch_im_x = np.pad(im[:,:,:,np.newaxis,np.newaxis], p, mode='reflect')
-    g_im = np.exp(-(patch_im - patch_im_x)**2 / (2 * sr**2)).sum(axis=2)
+
+    g_im = np.sum(np.exp(-(patch_im - patch_im_x)**2 / (2 * sr**2)), axis=2)
     g_sdm = np.exp(-patch_sdm) * filters.gaussian_filter(np.ones((wr, wr)), spatial_domain)
-    t = g_im * g_sdm
+    f = g_im * g_sdm
+    w = np.sum(np.sum(f, axis=-1), axis=-1) + 0.00001
+    filtered = np.expand_dims(np.sum(np.sum(patch_sdm * f, axis=3), axis=2)/w, -1)
+
+    return filtered
 
 # load image as grey
 fname = './lena.tiff'
@@ -92,7 +98,11 @@ max_blur = 3
 sdm = np.where(sdm > max_blur, max_blur, sdm)
 
 # joint bilateral filtering
-joint_bilateral_filter(sdm, im, 5, 0.1*max_blur)
+filtered_sdm = joint_bilateral_filter(sdm, im, 5, 0.1*max_blur)
 
+# serialize filtered_sdm
+import cPickle
+f = open("filtered_sdm.pkl", "w")
+cPickle.dump(filtered_sdm, f)
 #io.imsave('test.png', sdm.astype(np.uint8)*15)
 #io.imsave('test.png', 255*edge_map.astype(np.uint8))
