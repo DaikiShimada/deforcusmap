@@ -91,7 +91,7 @@ sdm = np.zeros_like(ratio)
 mx, my = np.where(edge_map * (ratio > 1.01) * (ratio <= std_2/std_1))
 
 # enhancement
-sdm[mx,my] = np.sqrt((ratio[mx,my]**2 * (std_1**2 - std_2**2) + 0.001) / (1 - ratio[mx,my]**2))
+sdm[mx,my] = np.sqrt(((ratio[mx,my]**2 * std_1**2 - std_2**2) + 0.001) / (1 - ratio[mx,my]**2))
 
 # clip
 max_blur = 3
